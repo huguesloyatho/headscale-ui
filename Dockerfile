@@ -9,7 +9,7 @@ WORKDIR /app/frontend
 COPY frontend/package*.json ./
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm install --omit=dev
 
 # Copy frontend source
 COPY frontend/ ./
@@ -31,7 +31,7 @@ WORKDIR /app/backend
 COPY backend/package*.json ./
 
 # Install production dependencies only
-RUN npm ci --only=production
+RUN npm install --omit=dev
 
 # ======================
 # Stage 3: Production Image
