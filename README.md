@@ -40,7 +40,7 @@ Headscale UI est un dashboard web moderne qui permet de gérer facilement votre 
 1. **Cloner le projet**
 
 ```bash
-git clone https://github.com/votre-repo/headscale-ui.git
+git clone https://github.com/huguesloyatho/headscale-ui.git
 cd headscale-ui
 ```
 
@@ -180,8 +180,8 @@ Ce projet est sous licence MIT. Voir [LICENSE](LICENSE) pour plus de détails.
 
 ## 📧 Support
 
-- 🐛 [Issues](https://github.com/votre-repo/headscale-ui/issues)
-- 💬 [Discussions](https://github.com/votre-repo/headscale-ui/discussions)
+- 🐛 [Issues](https://github.com/huguesloyatho/headscale-ui/issues)
+- 💬 [Discussions](https://github.com/huguesloyatho/headscale-ui/discussions)
 
 ---
 

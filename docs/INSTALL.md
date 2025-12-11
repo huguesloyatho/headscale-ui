@@ -54,7 +54,7 @@ docker inspect headscale | grep NetworkMode
 2. **Cloner le projet**
 
 ```bash
-git clone https://github.com/votre-repo/headscale-ui.git
+git clone https://github.com/huguesloyatho/headscale-ui.git
 cd headscale-ui
 ```
 

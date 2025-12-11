@@ -20,7 +20,7 @@ docker exec headscale headscale apikeys create
 
 ```bash
 # Cloner le projet
-git clone https://github.com/votre-repo/headscale-ui.git
+git clone https://github.com/huguesloyatho/headscale-ui.git
 cd headscale-ui
 
 # Lancer l'installation automatique
@@ -183,8 +183,8 @@ Plus de solutions : [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
 ## 🤝 Besoin d'aide ?
 
 - 📖 Lire la [documentation complète](README.md)
-- 🐛 Ouvrir une [issue GitHub](https://github.com/votre-repo/headscale-ui/issues)
-- 💬 Rejoindre les [discussions](https://github.com/votre-repo/headscale-ui/discussions)
+- 🐛 Ouvrir une [issue GitHub](https://github.com/huguesloyatho/headscale-ui/issues)
+- 💬 Rejoindre les [discussions](https://github.com/huguesloyatho/headscale-ui/discussions)
 
 ---
 

@@ -497,7 +497,7 @@ Si le problème persiste :
    ```
 
 2. **Ouvrir une issue GitHub**
-   - [Créer une issue](https://github.com/votre-repo/headscale-ui/issues/new)
+   - [Créer une issue](https://github.com/huguesloyatho/headscale-ui/issues/new)
    - Joindre les logs (sans secrets!)
    - Décrire les étapes pour reproduire
 
