@@ -6,7 +6,7 @@
 
 import { config } from './config.js';
 import { api } from './api.js';
-import { createElement, showMessage, createLoader, clearContainer, createTable } from './utils.js';
+import { createElement, showMessage, createLoader, clearContainer, createTable, createDebugCard } from './utils.js';
 
 class App {
   constructor() {
@@ -184,6 +184,10 @@ class App {
     const formCard = this.createUserForm();
     container.appendChild(formCard);
 
+    // Debug card
+    const debugCard = createDebugCard('Liste des utilisateurs', 'GET /api/users', { loading: true });
+    container.appendChild(debugCard);
+
     // Data card
     const dataCard = createElement('section', { className: 'card card-fullwidth' });
     const h3 = createElement('h3', {}, 'Liste des utilisateurs');
@@ -192,20 +196,105 @@ class App {
 
     // Fetch data
     const result = await api.getUsers();
+
+    // Update debug card with result
+    container.replaceChild(createDebugCard('Liste des utilisateurs', 'GET /api/users', result), debugCard);
+
     if (!result.success) {
       dataCard.appendChild(showMessage('Erreur', 1, result.error));
       return;
     }
 
-    const users = result.data.data || result.data.users || [];
+    // result.data is now directly an array
+    const users = Array.isArray(result.data) ? result.data : [];
+
     if (users.length === 0) {
       dataCard.appendChild(createElement('p', { className: 'hint' }, 'Aucun utilisateur'));
       return;
     }
 
-    const headers = Object.keys(users[0]);
-    const table = createTable(headers, users, 'users');
+    // Create table with action buttons
+    const table = this.createUsersTable(users);
     dataCard.appendChild(table);
+  }
+
+  /**
+   * Create users table with action buttons
+   */
+  createUsersTable(users) {
+    const wrapper = createElement('div', { className: 'table-wrapper' });
+    const table = createElement('table', {
+      className: 'data-table',
+      'data-section': 'users',
+    });
+
+    // Get headers (exclude 'id' from display if present, but keep for actions)
+    const allHeaders = Object.keys(users[0]);
+    const displayHeaders = allHeaders.filter(h => h !== 'id');
+
+    // Add Actions column
+    const headers = [...displayHeaders, 'Actions'];
+
+    // Create thead
+    const thead = createElement('thead');
+    const headerRow = createElement('tr');
+    headers.forEach(header => {
+      const th = createElement('th', { 'data-col': header }, header);
+      if (header !== 'Actions') {
+        th.draggable = true;
+      }
+      headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    // Create tbody
+    const tbody = createElement('tbody');
+    users.forEach(user => {
+      const tr = createElement('tr');
+
+      // Data columns
+      displayHeaders.forEach(header => {
+        const value = user[header] || '';
+        const td = createElement('td', { 'data-col': header }, String(value));
+        tr.appendChild(td);
+      });
+
+      // Actions column
+      const actionsTd = createElement('td', { 'data-col': 'Actions' });
+      const deleteBtn = createElement('button', {
+        className: 'btn-delete',
+        title: 'Supprimer l\'utilisateur'
+      }, '🗑️');
+
+      deleteBtn.addEventListener('click', async () => {
+        if (!confirm(`Êtes-vous sûr de vouloir supprimer l'utilisateur "${user.name}" ?\n\nCette action est irréversible et supprimera également tous les nœuds associés.`)) {
+          return;
+        }
+
+        deleteBtn.disabled = true;
+        deleteBtn.textContent = '⏳';
+
+        // Use ID for deletion, not name (Headscale API requirement)
+        const result = await api.deleteUser(user.id);
+
+        if (result.success) {
+          await this.loadSection('users', false);
+        } else {
+          alert(`Erreur lors de la suppression: ${result.error}`);
+          deleteBtn.disabled = false;
+          deleteBtn.textContent = '🗑️';
+        }
+      });
+
+      actionsTd.appendChild(deleteBtn);
+      tr.appendChild(actionsTd);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+
+    wrapper.appendChild(table);
+    return wrapper;
   }
 
   /**
@@ -263,6 +352,10 @@ class App {
     const formCard = this.createNodeForms();
     container.appendChild(formCard);
 
+    // Debug card
+    const debugCard = createDebugCard('Liste des noeuds', 'GET /api/nodes', { loading: true });
+    container.appendChild(debugCard);
+
     // Data card
     const dataCard = createElement('section', { className: 'card card-fullwidth' });
     const h3 = createElement('h3', {}, 'Liste des noeuds');
@@ -270,12 +363,17 @@ class App {
     container.appendChild(dataCard);
 
     const result = await api.getNodes();
+
+    // Update debug card with result
+    container.replaceChild(createDebugCard('Liste des noeuds', 'GET /api/nodes', result), debugCard);
+
     if (!result.success) {
       dataCard.appendChild(showMessage('Erreur', 1, result.error));
       return;
     }
 
-    const nodes = result.data.data || [];
+    // result.data is now directly an array
+    const nodes = Array.isArray(result.data) ? result.data : [];
     if (nodes.length === 0) {
       dataCard.appendChild(createElement('p', { className: 'hint' }, 'Aucun noeud'));
       return;
@@ -507,10 +605,137 @@ class App {
    * Render other sections (simplified for now)
    */
   async renderApiKeys(container) {
+    // Forms card
+    const formsCard = this.createApiKeyForms();
+    container.appendChild(formsCard);
+
+    // Debug card
+    const debugCard = createDebugCard('Liste des API keys', 'GET /api/apikeys', { loading: true });
+    container.appendChild(debugCard);
+
+    // Data card
+    const dataCard = createElement('section', { className: 'card card-fullwidth' });
+    const h3 = createElement('h3', {}, 'Résultat JSON');
+    dataCard.appendChild(h3);
+    container.appendChild(dataCard);
+
+    // Fetch data
+    const result = await api.getApiKeys();
+
+    // Update debug card
+    container.replaceChild(createDebugCard('Liste des API keys', 'GET /api/apikeys', result), debugCard);
+
+    if (!result.success) {
+      dataCard.appendChild(showMessage('Erreur', 1, result.error));
+      return;
+    }
+
+    const apiKeys = Array.isArray(result.data) ? result.data : [];
+    if (apiKeys.length === 0) {
+      dataCard.appendChild(createElement('p', { className: 'hint' }, 'Aucune API key'));
+      return;
+    }
+
+    const headers = Object.keys(apiKeys[0]);
+    const table = createTable(headers, apiKeys, 'apikeys');
+    dataCard.appendChild(table);
+  }
+
+  /**
+   * Create API key forms
+   */
+  createApiKeyForms() {
     const card = createElement('section', { className: 'card' });
-    card.appendChild(createElement('h2', {}, 'API Keys'));
-    card.appendChild(createElement('p', { className: 'hint' }, 'Section en développement...'));
-    container.appendChild(card);
+    const h2 = createElement('h2', {}, 'API Keys');
+    card.appendChild(h2);
+
+    // Create API key form
+    const createForm = createElement('form', { className: 'form-block' });
+    const createTitle = createElement('h3', {}, 'Créer une API key');
+    createForm.appendChild(createTitle);
+
+    const expirationField = createElement('div', { className: 'form-field' });
+    const expirationLabel = createElement('label', {}, 'Expiration (ex : 90d, 24h, 1y) - optionnel');
+    const expirationInput = createElement('input', {
+      type: 'text',
+      name: 'expiration',
+      placeholder: '90d',
+    });
+    expirationField.appendChild(expirationLabel);
+    expirationField.appendChild(expirationInput);
+    createForm.appendChild(expirationField);
+
+    const createButton = createElement('button', { type: 'submit' }, 'Créer une API key');
+    createForm.appendChild(createButton);
+
+    createForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      createButton.disabled = true;
+      createButton.textContent = 'Création...';
+
+      const expiration = expirationInput.value.trim();
+      const result = await api.createApiKey(expiration || null);
+
+      if (result.success) {
+        expirationInput.value = '';
+        await this.loadSection('apikeys', false);
+      } else {
+        alert(`Erreur: ${result.error}`);
+      }
+
+      createButton.disabled = false;
+      createButton.textContent = 'Créer une API key';
+    });
+
+    card.appendChild(createForm);
+
+    // Divider
+    card.appendChild(createElement('hr', { className: 'divider' }));
+
+    // Expire API key form
+    const expireForm = createElement('form', { className: 'form-block' });
+    const expireTitle = createElement('h3', {}, 'Expirer une API key');
+    expireForm.appendChild(expireTitle);
+
+    const prefixField = createElement('div', { className: 'form-field' });
+    const prefixLabel = createElement('label', {}, 'Préfixe de la clé à expirer');
+    const prefixInput = createElement('input', {
+      type: 'text',
+      name: 'prefix',
+      required: true,
+    });
+    prefixField.appendChild(prefixLabel);
+    prefixField.appendChild(prefixInput);
+    expireForm.appendChild(prefixField);
+
+    const expireButton = createElement('button', { type: 'submit' }, 'Expirer l\'API key');
+    expireForm.appendChild(expireButton);
+
+    expireForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!confirm(`Êtes-vous sûr de vouloir expirer l'API key avec le préfixe "${prefixInput.value}" ?`)) {
+        return;
+      }
+
+      expireButton.disabled = true;
+      expireButton.textContent = 'Expiration...';
+
+      const prefix = prefixInput.value.trim();
+      const result = await api.expireApiKey(prefix);
+
+      if (result.success) {
+        prefixInput.value = '';
+        await this.loadSection('apikeys', false);
+      } else {
+        alert(`Erreur: ${result.error}`);
+      }
+
+      expireButton.disabled = false;
+      expireButton.textContent = 'Expirer l\'API key';
+    });
+
+    card.appendChild(expireForm);
+    return card;
   }
 
   async renderPreauth(container) {

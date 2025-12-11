@@ -40,7 +40,8 @@ class ApiClient {
         throw new Error(data.error || 'Request failed');
       }
 
-      return { success: true, data };
+      // Return the backend response directly (already has success/data structure)
+      return data;
     } catch (error) {
       return { success: false, error: error.message };
     }

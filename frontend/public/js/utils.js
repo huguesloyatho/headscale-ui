@@ -66,6 +66,39 @@ export function showMessage(title, status, message, details = null) {
 }
 
 /**
+ * Create a debug info card
+ */
+export function createDebugCard(title, endpoint, result) {
+  const card = createElement('section', { className: 'card debug-card' });
+
+  const h3 = createElement('h3', {}, title);
+  card.appendChild(h3);
+
+  // Status
+  const statusText = createElement('p', {});
+  const statusSpan = createElement(
+    'span',
+    { className: result.success ? 'status-ok' : 'status-error' },
+    result.success ? 'OK' : `Erreur`
+  );
+  statusText.appendChild(document.createTextNode('Statut : '));
+  statusText.appendChild(statusSpan);
+  card.appendChild(statusText);
+
+  // Endpoint/Command
+  if (endpoint) {
+    const endpointText = createElement('p', {}, `Endpoint : ${endpoint}`);
+    card.appendChild(endpointText);
+  }
+
+  // JSON Result
+  const jsonBlock = createElement('pre', { className: 'log-block' }, JSON.stringify(result, null, 2));
+  card.appendChild(jsonBlock);
+
+  return card;
+}
+
+/**
  * Create a loading indicator
  */
 export function createLoader() {

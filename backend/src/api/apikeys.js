@@ -23,9 +23,12 @@ router.get('/', async (req, res, next) => {
       });
     }
 
+    // Extract apiKeys array from result.data (Headscale returns {apiKeys: [...]})
+    const apiKeys = Array.isArray(result.data.apiKeys) ? result.data.apiKeys : [];
+
     res.json({
       success: true,
-      data: result.data,
+      data: apiKeys,
     });
   } catch (error) {
     next(error);

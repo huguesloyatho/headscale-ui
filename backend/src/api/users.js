@@ -23,9 +23,12 @@ router.get('/', async (req, res, next) => {
       });
     }
 
+    // Extract users array from result.data (Headscale returns {users: [...]})
+    const users = Array.isArray(result.data.users) ? result.data.users : [];
+
     res.json({
       success: true,
-      data: result.data,
+      data: users,
     });
   } catch (error) {
     next(error);

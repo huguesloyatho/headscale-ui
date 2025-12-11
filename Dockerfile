@@ -8,8 +8,8 @@ WORKDIR /app/frontend
 # Copy frontend package files
 COPY frontend/package*.json ./
 
-# Install dependencies
-RUN npm install --omit=dev
+# Install ALL dependencies (including dev) for build
+RUN npm install
 
 # Copy frontend source
 COPY frontend/ ./
@@ -58,15 +58,12 @@ COPY --chown=nodejs:nodejs backend/src ./backend/src
 COPY --chown=nodejs:nodejs backend/healthcheck.js ./backend/
 COPY --chown=nodejs:nodejs backend/package.json ./backend/
 
-# Copy frontend build (if exists, otherwise just copy source)
-COPY --from=frontend-build --chown=nodejs:nodejs /app/frontend/build ./backend/public 2>/dev/null || \
-COPY --from=frontend-build --chown=nodejs:nodejs /app/frontend/dist ./backend/public 2>/dev/null || \
-COPY --from=frontend-build --chown=nodejs:nodejs /app/frontend/public ./backend/public 2>/dev/null || \
-COPY --from=frontend-build --chown=nodejs:nodejs /app/frontend/src ./backend/public
+# Copy frontend static files
+# Since we're using vanilla JS, just copy the public folder directly
+COPY --chown=nodejs:nodejs frontend/public ./backend/public
 
-# Create storage directory with proper permissions
-RUN mkdir -p /app/backend/src/storage && \
-    chown -R nodejs:nodejs /app
+# Ensure proper permissions (storage folder already exists from COPY)
+RUN chown -R nodejs:nodejs /app
 
 # Switch to non-root user
 USER nodejs
@@ -78,5 +75,8 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node /app/backend/healthcheck.js || exit 1
 
+# Set working directory to backend source
+WORKDIR /app/backend/src
+
 # Start the application
-CMD ["node", "/app/backend/src/index.js"]
+CMD ["node", "index.js"]

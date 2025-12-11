@@ -10,7 +10,8 @@ const CryptoJS = require('crypto-js');
 const config = require('../config/env');
 const logger = require('../utils/logger');
 
-const STORAGE_DIR = path.join(__dirname);
+// Use /app/storage for data (mounted volume), not __dirname (code location)
+const STORAGE_DIR = path.join(__dirname, '../../..', 'storage');
 const SETTINGS_FILE = path.join(STORAGE_DIR, 'settings.json');
 
 class Storage {

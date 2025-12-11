@@ -1,4 +1,4 @@
-version: '3.8'
+# version: '3.8'  # Deprecated in modern Docker Compose
 
 services:
   headscale-ui:
@@ -30,9 +30,9 @@ services:
     env_file:
       - .env
 
-    # Persistent storage for settings
+    # Persistent storage for settings (only mount data, not code)
     volumes:
-      - ./storage:/app/backend/src/storage
+      - ./storage:/app/storage
       # Uncomment if Docker fallback is enabled (NOT RECOMMENDED)
       # - /var/run/docker.sock:/var/run/docker.sock:ro
 
@@ -48,8 +48,9 @@ services:
       start_period: 10s
 
     # Networks - connect to Headscale network if running together
-    networks:
-      - headscale-network
+    # Comment this if Headscale is accessed via IP (not Docker network)
+    # networks:
+    #   - headscale-network
 
     # Logging
     logging:
@@ -58,9 +59,10 @@ services:
         max-size: "10m"
         max-file: "3"
 
-networks:
-  headscale-network:
-    # Use existing network if Headscale is already running
-    external: true
-    # Or create a new network
-    # driver: bridge
+# Networks - uncomment if you need to connect to Headscale via Docker network
+# networks:
+#   headscale-network:
+#     # Use existing network if Headscale is already running
+#     external: true
+#     # Or create a new network
+#     # driver: bridge

@@ -7,9 +7,14 @@
 
 const dotenv = require('dotenv');
 const path = require('path');
+const fs = require('fs');
 
-// Load .env from project root
-dotenv.config({ path: path.join(__dirname, '../../../.env') });
+// Load .env from project root (optional - for local development)
+// In Docker, environment variables are set by docker-compose
+const envPath = path.join(__dirname, '../../../.env');
+if (fs.existsSync(envPath)) {
+  dotenv.config({ path: envPath });
+}
 
 /**
  * Validates that a required environment variable is set
