@@ -16,13 +16,18 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-# Check for Docker Compose
-if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
+# Check for Docker Compose and determine which command to use
+DOCKER_COMPOSE_CMD=""
+if command -v docker-compose &> /dev/null; then
+    DOCKER_COMPOSE_CMD="docker-compose"
+elif docker compose version &> /dev/null 2>&1; then
+    DOCKER_COMPOSE_CMD="docker compose"
+else
     echo "❌ Docker Compose n'est pas installé. Veuillez installer Docker Compose d'abord."
     exit 1
 fi
 
-echo "✅ Docker et Docker Compose détectés"
+echo "✅ Docker et Docker Compose détectés ($DOCKER_COMPOSE_CMD)"
 echo ""
 
 # Check if .env exists
@@ -75,8 +80,8 @@ echo "🚀 Lancement de l'application..."
 echo ""
 
 # Build and start
-docker-compose build
-docker-compose up -d
+$DOCKER_COMPOSE_CMD build
+$DOCKER_COMPOSE_CMD up -d
 
 echo ""
 echo "⏳ Attente du démarrage de l'application..."
