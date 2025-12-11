@@ -1,0 +1,29 @@
+version: '3.8'
+
+# Development docker-compose override
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  headscale-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    # Override environment for development
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=debug
+
+    # Mount source code for hot-reload (if using nodemon)
+    volumes:
+      - ./backend/src:/app/backend/src
+      - ./frontend/src:/app/frontend/src
+      - ./storage:/app/backend/src/storage
+
+    # Override command to use nodemon
+    command: ["npx", "nodemon", "/app/backend/src/index.js"]
+
+    # Expose additional ports if needed (e.g., for debugging)
+    ports:
+      - "${APP_PORT:-3000}:3000"
+      - "9229:9229"  # Node.js debugging port

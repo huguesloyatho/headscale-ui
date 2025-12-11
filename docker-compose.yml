@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  headscale-ui:
+    build: .
+    container_name: headscale-ui
+    image: headscale-ui:latest
+
+    # Port mapping - change host port if needed
+    ports:
+      - "${APP_PORT:-3000}:3000"
+
+    # Environment variables from .env file
+    environment:
+      - HEADSCALE_URL=${HEADSCALE_URL}
+      - HEADSCALE_API_KEY=${HEADSCALE_API_KEY}
+      - APP_PORT=3000
+      - NODE_ENV=${NODE_ENV:-production}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - SESSION_SECRET=${SESSION_SECRET:-change-me-in-production}
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - ENABLE_AUTH=${ENABLE_AUTH:-false}
+      - TOTP_ENABLED=${TOTP_ENABLED:-false}
+      - RATE_LIMIT_MAX=${RATE_LIMIT_MAX:-100}
+      - RATE_LIMIT_WINDOW=${RATE_LIMIT_WINDOW:-15}
+      - DOCKER_FALLBACK_ENABLED=${DOCKER_FALLBACK_ENABLED:-false}
+      - HEADSCALE_PROVIDER=${HEADSCALE_PROVIDER:-api}
+
+    # Load environment from .env file
+    env_file:
+      - .env
+
+    # Persistent storage for settings
+    volumes:
+      - ./storage:/app/backend/src/storage
+      # Uncomment if Docker fallback is enabled (NOT RECOMMENDED)
+      # - /var/run/docker.sock:/var/run/docker.sock:ro
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Healthcheck
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    # Networks - connect to Headscale network if running together
+    networks:
+      - headscale-network
+
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  headscale-network:
+    # Use existing network if Headscale is already running
+    external: true
+    # Or create a new network
+    # driver: bridge
