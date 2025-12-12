@@ -149,6 +149,13 @@ class ApiProvider {
     });
   }
 
+  // ==================== NODE TAGS ====================
+
+  async setNodeTags(nodeId, tags) {
+    logger.info('Setting node tags via API', { nodeId, tags });
+    return await this.client.post(`/api/v1/node/${nodeId}/tags`, { tags });
+  }
+
   // ==================== POLICY ====================
 
   async getPolicy() {

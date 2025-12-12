@@ -86,6 +86,13 @@ class ApiClient {
     });
   }
 
+  async setNodeTags(nodeId, tags) {
+    return await this.request(`/nodes/${nodeId}/tags`, {
+      method: 'POST',
+      body: JSON.stringify({ tags }),
+    });
+  }
+
   async deleteNode(nodeId) {
     return await this.request(`/nodes/${nodeId}`, {
       method: 'DELETE',
@@ -181,6 +188,13 @@ class ApiClient {
     return await this.request('/settings', {
       method: 'POST',
       body: JSON.stringify({ url, apiKey }),
+    });
+  }
+
+  async updatePreferences(preferences) {
+    return await this.request('/settings/preferences', {
+      method: 'PUT',
+      body: JSON.stringify(preferences),
     });
   }
 

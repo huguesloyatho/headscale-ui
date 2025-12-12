@@ -28,16 +28,14 @@ router.get('/', async (req, res, next) => {
     const nodes = Array.isArray(result.data.nodes) ? result.data.nodes : [];
     const formatted = nodes.map(node => ({
       id: node.id || '',
-      hostname: node.hostname || node.name || '',
       name: node.givenName || node.name || '',
-      machine_key: node.machineKey || '',
-      node_key: node.nodeKey || '',
       user: extractUserName(node.user),
       ip_addresses: arrayToString(node.ipAddresses || node.addresses || []),
-      ephemeral: boolLabel(node.ephemeral),
+      tags: arrayToString(node.forcedTags || []),
+      connected: boolLabel(node.online || node.connected),
       last_seen: formatTimestamp(node.lastSeen || node.last_seen),
       expiration: formatTimestamp(node.expiry || node.expiration),
-      connected: boolLabel(node.online || node.connected),
+      ephemeral: boolLabel(node.ephemeral),
       expired: boolLabel(node.expired),
     }));
 
@@ -135,6 +133,73 @@ router.post('/:nodeId/rename', async (req, res, next) => {
     res.json({
       success: true,
       message: 'Node renamed successfully',
+      data: result.data,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/nodes/:nodeId/tags
+ * Set tags for a node
+ */
+router.post('/:nodeId/tags', async (req, res, next) => {
+  try {
+    const nodeId = req.params.nodeId;
+
+    if (!isPositiveInteger(nodeId)) {
+      return res.status(400).json({
+        error: 'Invalid node ID',
+        message: 'Node ID must be a positive integer',
+      });
+    }
+
+    const validation = validateRequired(req.body, ['tags']);
+    if (!validation.valid) {
+      return res.status(400).json({
+        error: 'Missing required fields',
+        missing: validation.missing,
+      });
+    }
+
+    let tags = req.body.tags;
+
+    // Accept string (comma-separated) or array
+    if (typeof tags === 'string') {
+      tags = tags.split(',').map(t => t.trim()).filter(t => t);
+    } else if (!Array.isArray(tags)) {
+      return res.status(400).json({
+        error: 'Invalid tags format',
+        message: 'Tags must be an array or comma-separated string',
+      });
+    }
+
+    // Validate tag format (must start with "tag:")
+    for (const tag of tags) {
+      if (!tag.startsWith('tag:')) {
+        return res.status(400).json({
+          error: 'Invalid tag format',
+          message: 'Tags must start with "tag:" (e.g., "tag:server")',
+          invalidTag: tag,
+        });
+      }
+    }
+
+    const provider = getProvider();
+    const result = await provider.setNodeTags(nodeId, tags);
+
+    if (!result.success) {
+      return res.status(result.status || 500).json({
+        error: result.error,
+      });
+    }
+
+    logger.info('Node tags updated', { nodeId, tags });
+
+    res.json({
+      success: true,
+      message: 'Node tags updated successfully',
       data: result.data,
     });
   } catch (error) {

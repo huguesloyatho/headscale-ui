@@ -24,10 +24,10 @@ const generalLimiter = rateLimit({
  */
 const strictLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
-  max: 3, // 3 requests per minute
+  max: 10, // 10 requests per minute
   message: {
     error: 'Too many requests',
-    message: 'Please try again later. Limit: 3 requests per minute',
+    message: 'Please try again later. Limit: 10 requests per minute',
   },
   standardHeaders: true,
   legacyHeaders: false,

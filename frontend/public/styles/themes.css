@@ -1,0 +1,314 @@
+/**
+ * Theme System
+ * Supports: Dark (default), Light, Green (écolo)
+ */
+
+/* ============================================
+   DARK THEME (Default)
+   ============================================ */
+[data-theme="dark"],
+:root {
+  /* Background colors */
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-tertiary: #334155;
+  --bg-hover: #475569;
+
+  /* Text colors */
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+
+  /* Border colors */
+  --border-color: #334155;
+  --border-hover: #475569;
+
+  /* Accent colors */
+  --accent-primary: #3b82f6;
+  --accent-hover: #2563eb;
+  --accent-light: #60a5fa;
+
+  /* Status colors */
+  --success: #10b981;
+  --success-bg: #065f46;
+  --warning: #f59e0b;
+  --warning-bg: #78350f;
+  --error: #ef4444;
+  --error-bg: #7f1d1d;
+  --info: #06b6d4;
+  --info-bg: #164e63;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+
+  /* Chart colors */
+  --chart-1: #3b82f6;
+  --chart-2: #10b981;
+  --chart-3: #f59e0b;
+  --chart-4: #ef4444;
+}
+
+/* ============================================
+   LIGHT THEME
+   ============================================ */
+[data-theme="light"] {
+  /* Background colors */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
+  --bg-hover: #e2e8f0;
+
+  /* Text colors */
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+
+  /* Border colors */
+  --border-color: #e2e8f0;
+  --border-hover: #cbd5e1;
+
+  /* Accent colors */
+  --accent-primary: #3b82f6;
+  --accent-hover: #2563eb;
+  --accent-light: #60a5fa;
+
+  /* Status colors */
+  --success: #10b981;
+  --success-bg: #d1fae5;
+  --warning: #f59e0b;
+  --warning-bg: #fef3c7;
+  --error: #ef4444;
+  --error-bg: #fee2e2;
+  --info: #06b6d4;
+  --info-bg: #cffafe;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+
+  /* Chart colors */
+  --chart-1: #3b82f6;
+  --chart-2: #10b981;
+  --chart-3: #f59e0b;
+  --chart-4: #ef4444;
+}
+
+/* ============================================
+   GREEN THEME (Écolo)
+   ============================================ */
+[data-theme="green"] {
+  /* Background colors - terre/nature */
+  --bg-primary: #1a2e1a;
+  --bg-secondary: #2d4a2d;
+  --bg-tertiary: #3d5a3d;
+  --bg-hover: #4d6a4d;
+
+  /* Text colors - naturel */
+  --text-primary: #f0f7f0;
+  --text-secondary: #d4e7d4;
+  --text-muted: #a8c8a8;
+
+  /* Border colors */
+  --border-color: #3d5a3d;
+  --border-hover: #4d6a4d;
+
+  /* Accent colors - vert écolo */
+  --accent-primary: #22c55e;
+  --accent-hover: #16a34a;
+  --accent-light: #4ade80;
+
+  /* Status colors */
+  --success: #22c55e;
+  --success-bg: #14532d;
+  --warning: #eab308;
+  --warning-bg: #713f12;
+  --error: #f87171;
+  --error-bg: #7f1d1d;
+  --info: #06b6d4;
+  --info-bg: #164e63;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+
+  /* Chart colors - teintes naturelles */
+  --chart-1: #22c55e;
+  --chart-2: #84cc16;
+  --chart-3: #eab308;
+  --chart-4: #f59e0b;
+}
+
+/* ============================================
+   THEME TRANSITIONS
+   ============================================ */
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+* {
+  transition: background-color 0.3s ease,
+              border-color 0.3s ease,
+              color 0.3s ease;
+}
+
+/* ============================================
+   APPLY THEME TO COMPONENTS
+   ============================================ */
+
+/* Cards */
+.card {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+  box-shadow: var(--shadow-md);
+}
+
+.card:hover {
+  border-color: var(--border-hover);
+}
+
+/* Buttons */
+button {
+  background: var(--accent-primary);
+  color: white;
+}
+
+button:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+button:disabled {
+  opacity: 0.5;
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+}
+
+/* Inputs */
+input,
+select,
+textarea {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--accent-primary);
+  outline-color: var(--accent-light);
+}
+
+/* Navigation */
+nav {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}
+
+nav button {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+nav button.active {
+  background: var(--accent-primary);
+  color: white;
+}
+
+nav button:hover:not(.active) {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* Tables */
+table {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}
+
+thead {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+tbody tr:hover {
+  background: var(--bg-hover);
+}
+
+/* Status badges */
+.badge-success {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.badge-warning {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.badge-error {
+  background: var(--error-bg);
+  color: var(--error);
+}
+
+.badge-info {
+  background: var(--info-bg);
+  color: var(--info);
+}
+
+/* Pre/Code blocks */
+pre,
+code {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+/* Scrollbars (WebKit) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--bg-hover);
+}
+
+/* ============================================
+   THEME-SPECIFIC ADJUSTMENTS
+   ============================================ */
+
+/* Light theme adjustments */
+[data-theme="light"] button:disabled {
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+}
+
+[data-theme="light"] .card {
+  border: 1px solid var(--border-color);
+}
+
+/* Green theme - nature touches */
+[data-theme="green"] h1,
+[data-theme="green"] h2,
+[data-theme="green"] h3 {
+  color: var(--accent-light);
+}
+
+[data-theme="green"] .accent {
+  color: var(--accent-primary);
+}

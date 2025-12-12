@@ -127,6 +127,18 @@ class SettingsService {
       message: 'Settings updated and connection successful',
     };
   }
+
+  /**
+   * Update user preferences (language, theme, logo)
+   */
+  async updatePreferences(preferences) {
+    const storage = getStorage();
+    const result = await storage.updatePreferences(preferences);
+
+    logger.info('Preferences updated successfully', { preferences });
+
+    return result;
+  }
 }
 
 module.exports = new SettingsService();

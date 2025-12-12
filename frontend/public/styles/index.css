@@ -47,6 +47,12 @@ body {
     letter-spacing: 0.03em;
 }
 
+.app-logo {
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+}
+
 .app-subtitle {
     font-size: 13px;
     color: #9ca3af;

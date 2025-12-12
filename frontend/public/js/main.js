@@ -67,7 +67,7 @@ class App {
    */
   renderHeader() {
     const header = createElement('header', { className: 'app-header' });
-    const h1 = createElement('h1', {}, 'Headscale Admin');
+    const h1 = createElement('h1', { className: 'app-logo' }, 'Headscale UI');
     const subtitle = createElement('p', { className: 'app-subtitle' },
       'Dashboard moderne utilisant l\'API REST de Headscale'
     );
@@ -535,6 +535,12 @@ class App {
     const renameForm = this.createNodeRenameForm();
     card.appendChild(renameForm);
 
+    card.appendChild(createElement('hr', { className: 'divider' }));
+
+    // Tags form
+    const tagsForm = this.createNodeTagsForm();
+    card.appendChild(tagsForm);
+
     return card;
   }
 
@@ -610,23 +616,150 @@ class App {
     return form;
   }
 
+  createNodeTagsForm() {
+    const form = createElement('form', { className: 'form-block' });
+
+    // Title with help hint
+    const titleDiv = createElement('div', { style: 'margin-bottom: 8px;' });
+    const title = createElement('h3', {}, 'Gérer les tags d\'un noeud');
+    titleDiv.appendChild(title);
+    const hint = createElement('p', {
+      className: 'hint',
+      style: 'margin: 4px 0 8px 0; font-size: 12px;'
+    }, 'Les tags permettent de grouper les machines dans les règles ACL. Format: tag:nomtag (ex: tag:server, tag:laptop)');
+    titleDiv.appendChild(hint);
+    form.appendChild(titleDiv);
+
+    const idField = createElement('div', { className: 'form-field' });
+    idField.appendChild(createElement('label', {}, 'ID du noeud'));
+    const idInput = createElement('input', { type: 'text', name: 'node_id', required: true });
+    idField.appendChild(idInput);
+    form.appendChild(idField);
+
+    const tagsField = createElement('div', { className: 'form-field' });
+    tagsField.appendChild(createElement('label', {}, 'Tags (séparés par des virgules)'));
+    const tagsInput = createElement('input', {
+      type: 'text',
+      name: 'tags',
+      placeholder: 'tag:server,tag:production'
+    });
+    const tagsHint = createElement('p', {
+      className: 'hint',
+      style: 'margin-top: 4px; font-size: 11px;'
+    }, 'Exemples: tag:server, tag:laptop, tag:iot, tag:dev, tag:prod.');
+    tagsField.appendChild(tagsInput);
+    tagsField.appendChild(tagsHint);
+    form.appendChild(tagsField);
+
+    // Buttons container
+    const buttonsDiv = createElement('div', { style: 'display: flex; gap: 8px; align-items: center;' });
+
+    const button = createElement('button', { type: 'submit' }, 'Modifier les tags');
+    buttonsDiv.appendChild(button);
+
+    const removeButton = createElement('button', {
+      type: 'button',
+      style: 'background: linear-gradient(135deg, #ef4444, #dc2626);'
+    }, 'Supprimer tous les tags');
+    buttonsDiv.appendChild(removeButton);
+
+    form.appendChild(buttonsDiv);
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      button.disabled = true;
+      button.textContent = 'Modification...';
+
+      const nodeId = idInput.value.trim();
+      const tagsValue = tagsInput.value.trim();
+
+      // Convert to array, filter empty values
+      const tagsArray = tagsValue ? tagsValue.split(',').map(t => t.trim()).filter(t => t) : [];
+
+      // Validate tag format
+      for (const tag of tagsArray) {
+        if (!tag.startsWith('tag:')) {
+          await showAlert('Erreur', `Format invalide: "${tag}". Les tags doivent commencer par "tag:" (ex: tag:server)`);
+          button.disabled = false;
+          button.textContent = 'Modifier les tags';
+          return;
+        }
+      }
+
+      const result = await api.setNodeTags(nodeId, tagsArray);
+
+      if (result.success) {
+        idInput.value = '';
+        tagsInput.value = '';
+        await this.loadSection('nodes', false);
+      } else {
+        await showAlert('Erreur', result.error);
+      }
+
+      button.disabled = false;
+      button.textContent = 'Modifier les tags';
+    });
+
+    // Remove button handler
+    removeButton.addEventListener('click', async () => {
+      const nodeId = idInput.value.trim();
+
+      if (!nodeId) {
+        await showAlert('Erreur', 'Veuillez entrer l\'ID du noeud');
+        return;
+      }
+
+      const confirmed = await showConfirm(
+        'Supprimer les tags',
+        `Voulez-vous vraiment supprimer tous les tags du noeud ${nodeId} ?\n\n⚠️ BUG CONNU HEADSCALE v0.27:\nLes tags seront supprimés TEMPORAIREMENT mais reviendront après le redémarrage de Headscale.\nC'est un bug serveur (https://github.com/juanfont/headscale/issues/2417)\n\nLe noeud ne fera plus partie d'aucun groupe jusqu'au prochain redémarrage.`
+      );
+
+      if (!confirmed) return;
+
+      removeButton.disabled = true;
+      removeButton.textContent = 'Suppression...';
+
+      const result = await api.setNodeTags(nodeId, []);
+
+      if (result.success) {
+        idInput.value = '';
+        tagsInput.value = '';
+        await showAlert('Succès', 'Tags supprimés (temporairement)\n\n⚠️ Attention: Les tags reviendront après un redémarrage de Headscale à cause d\'un bug connu.\n\nPour une suppression permanente, contactez l\'administrateur serveur.');
+        await this.loadSection('nodes', false);
+      } else {
+        await showAlert('Erreur', result.error);
+      }
+
+      removeButton.disabled = false;
+      removeButton.textContent = 'Supprimer tous les tags';
+    });
+
+    return form;
+  }
+
   /**
    * Render Settings section (IMPORTANT!)
    */
   async renderSettings(container) {
-    const card = createElement('section', { className: 'card' });
-    const h2 = createElement('h2', {}, 'Configuration Headscale');
-    card.appendChild(h2);
-
     // Get current settings
     const settingsResult = await api.getSettings();
-    const currentSettings = settingsResult.success ? settingsResult.data.data : {};
+    const currentSettings = settingsResult.success ? settingsResult.data : {};
+    const preferences = currentSettings.preferences || { language: 'fr', theme: 'dark', customLogo: null };
 
-    const form = createElement('form', { className: 'form-block' });
+    // Create grid container for two-column layout
+    const gridContainer = createElement('div', {
+      style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px;'
+    });
+
+    // ==================== HEADSCALE CONFIGURATION CARD ====================
+    const headscaleCard = createElement('section', { className: 'card' });
+    headscaleCard.appendChild(createElement('h2', {}, t('settings.headscale.title', 'Configuration Headscale')));
+
+    const headscaleForm = createElement('form', { className: 'form-block' });
 
     // URL field
     const urlField = createElement('div', { className: 'form-field' });
-    urlField.appendChild(createElement('label', {}, 'URL de Headscale'));
+    urlField.appendChild(createElement('label', {}, t('settings.headscale.url', 'URL de Headscale')));
     const urlInput = createElement('input', {
       type: 'url',
       name: 'url',
@@ -635,11 +768,11 @@ class App {
       required: true,
     });
     urlField.appendChild(urlInput);
-    form.appendChild(urlField);
+    headscaleForm.appendChild(urlField);
 
     // API Key field
     const keyField = createElement('div', { className: 'form-field' });
-    keyField.appendChild(createElement('label', {}, 'API Key'));
+    keyField.appendChild(createElement('label', {}, t('settings.headscale.apikey', 'Clé API')));
     const keyInput = createElement('input', {
       type: 'password',
       name: 'apiKey',
@@ -647,38 +780,38 @@ class App {
       required: true,
     });
     keyField.appendChild(keyInput);
-    form.appendChild(keyField);
+    headscaleForm.appendChild(keyField);
 
     // Buttons
-    const buttonGroup = createElement('div', { style: 'display: flex; gap: 10px; margin-top: 10px;' });
-    const testButton = createElement('button', { type: 'button' }, 'Tester la connexion');
-    const saveButton = createElement('button', { type: 'submit' }, 'Enregistrer');
-    buttonGroup.appendChild(testButton);
-    buttonGroup.appendChild(saveButton);
-    form.appendChild(buttonGroup);
+    const headscaleButtonGroup = createElement('div', { style: 'display: flex; gap: 10px; margin-top: 10px;' });
+    const testButton = createElement('button', { type: 'button' }, t('settings.headscale.test', 'Tester la connexion'));
+    const saveButton = createElement('button', { type: 'submit' }, t('settings.headscale.save', 'Enregistrer'));
+    headscaleButtonGroup.appendChild(testButton);
+    headscaleButtonGroup.appendChild(saveButton);
+    headscaleForm.appendChild(headscaleButtonGroup);
 
     // Result area
-    const resultArea = createElement('div', { className: 'mt-2', id: 'settings-result' });
-    form.appendChild(resultArea);
+    const headscaleResultArea = createElement('div', { className: 'mt-2', id: 'headscale-result' });
+    headscaleForm.appendChild(headscaleResultArea);
 
     // Test connection handler
     testButton.addEventListener('click', async () => {
-      clearContainer(resultArea);
+      clearContainer(headscaleResultArea);
       testButton.disabled = true;
       testButton.textContent = 'Test en cours...';
 
       const result = await api.testConnection(urlInput.value, keyInput.value);
 
-      clearContainer(resultArea);
+      clearContainer(headscaleResultArea);
       if (result.success && result.data.success) {
-        resultArea.appendChild(showMessage(
+        headscaleResultArea.appendChild(showMessage(
           'Test de connexion',
           0,
           result.data.message,
           result.data.data
         ));
       } else {
-        resultArea.appendChild(showMessage(
+        headscaleResultArea.appendChild(showMessage(
           'Test de connexion',
           1,
           result.data?.message || result.error,
@@ -687,28 +820,28 @@ class App {
       }
 
       testButton.disabled = false;
-      testButton.textContent = 'Tester la connexion';
+      testButton.textContent = t('settings.headscale.test', 'Tester la connexion');
     });
 
     // Save settings handler
-    form.addEventListener('submit', async (e) => {
+    headscaleForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      clearContainer(resultArea);
+      clearContainer(headscaleResultArea);
       saveButton.disabled = true;
       saveButton.textContent = 'Enregistrement...';
 
       const result = await api.updateSettings(urlInput.value, keyInput.value);
 
-      clearContainer(resultArea);
+      clearContainer(headscaleResultArea);
       if (result.success && result.data.success) {
-        resultArea.appendChild(showMessage(
+        headscaleResultArea.appendChild(showMessage(
           'Sauvegarde des paramètres',
           0,
           'Paramètres enregistrés avec succès. L\'application va se reconnecter...'
         ));
         setTimeout(() => window.location.reload(), 2000);
       } else {
-        resultArea.appendChild(showMessage(
+        headscaleResultArea.appendChild(showMessage(
           'Sauvegarde des paramètres',
           1,
           result.data?.error || result.error
@@ -716,22 +849,203 @@ class App {
       }
 
       saveButton.disabled = false;
-      saveButton.textContent = 'Enregistrer';
+      saveButton.textContent = t('settings.headscale.save', 'Enregistrer');
     });
 
-    card.appendChild(form);
+    headscaleCard.appendChild(headscaleForm);
 
     // Info section
     if (currentSettings.lastConnection) {
-      const infoCard = createElement('section', { className: 'card mt-2' });
-      infoCard.appendChild(createElement('h3', {}, 'Informations'));
-      infoCard.appendChild(createElement('p', {},
+      const lastConn = createElement('p', { style: 'margin-top: 16px; font-size: 13px; color: #9ca3af;' },
         `Dernière connexion réussie : ${new Date(currentSettings.lastConnection).toLocaleString()}`
-      ));
-      container.appendChild(infoCard);
+      );
+      headscaleCard.appendChild(lastConn);
     }
 
-    container.appendChild(card);
+    gridContainer.appendChild(headscaleCard);
+
+    // ==================== USER PREFERENCES CARD ====================
+    const preferencesCard = createElement('section', { className: 'card' });
+    preferencesCard.appendChild(createElement('h2', {}, t('settings.preferences.title', 'Préférences')));
+
+    const preferencesForm = createElement('form', { className: 'form-block' });
+
+    // Language selector
+    const langField = createElement('div', { className: 'form-field' });
+    langField.appendChild(createElement('label', {}, t('settings.preferences.language', 'Langue')));
+    const langSelect = createElement('select', { name: 'language' });
+    const languages = [
+      { code: 'fr', name: t('lang.fr', 'Français') },
+      { code: 'en', name: t('lang.en', 'English') },
+      { code: 'es', name: t('lang.es', 'Español') },
+      { code: 'ja', name: t('lang.ja', '日本語') },
+      { code: 'zh', name: t('lang.zh', '中文') },
+    ];
+    languages.forEach(lang => {
+      const option = createElement('option', { value: lang.code }, lang.name);
+      if (lang.code === preferences.language) {
+        option.selected = true;
+      }
+      langSelect.appendChild(option);
+    });
+    langField.appendChild(langSelect);
+    preferencesForm.appendChild(langField);
+
+    // Theme selector
+    const themeField = createElement('div', { className: 'form-field' });
+    themeField.appendChild(createElement('label', {}, t('settings.preferences.theme', 'Thème')));
+    const themeSelect = createElement('select', { name: 'theme' });
+    const themes = [
+      { code: 'dark', name: t('theme.dark', 'Sombre') },
+      { code: 'light', name: t('theme.light', 'Clair') },
+      { code: 'green', name: t('theme.green', 'Écolo') },
+    ];
+    themes.forEach(theme => {
+      const option = createElement('option', { value: theme.code }, theme.name);
+      if (theme.code === preferences.theme) {
+        option.selected = true;
+      }
+      themeSelect.appendChild(option);
+    });
+    themeField.appendChild(themeSelect);
+    preferencesForm.appendChild(themeField);
+
+    // Custom logo section
+    const logoField = createElement('div', { className: 'form-field' });
+    logoField.appendChild(createElement('label', {}, t('settings.preferences.logo', 'Logo personnalisé')));
+
+    // Logo preview
+    const logoPreview = createElement('div', {
+      style: 'margin: 10px 0; padding: 20px; border: 2px dashed #475569; border-radius: 8px; text-align: center; min-height: 80px; display: flex; align-items: center; justify-content: center;'
+    });
+
+    if (preferences.customLogo) {
+      const previewImg = createElement('img', {
+        src: preferences.customLogo,
+        style: 'max-width: 100%; max-height: 60px;'
+      });
+      logoPreview.appendChild(previewImg);
+    } else {
+      logoPreview.appendChild(createElement('span', { style: 'color: #9ca3af;' }, 'Aucun logo personnalisé'));
+    }
+
+    logoField.appendChild(logoPreview);
+
+    // File input (hidden)
+    const logoFileInput = createElement('input', {
+      type: 'file',
+      accept: 'image/*',
+      style: 'display: none;'
+    });
+
+    // Upload button
+    const logoButtonGroup = createElement('div', { style: 'display: flex; gap: 10px;' });
+    const uploadLogoButton = createElement('button', { type: 'button' }, t('settings.preferences.logo.upload', 'Télécharger un logo'));
+    const removeLogoButton = createElement('button', {
+      type: 'button',
+      style: 'background: #ef4444;' + (preferences.customLogo ? '' : ' display: none;')
+    }, t('settings.preferences.logo.remove', 'Supprimer le logo'));
+
+    uploadLogoButton.addEventListener('click', () => logoFileInput.click());
+
+    logoFileInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      try {
+        const dataUrl = await fileToDataUrl(file);
+
+        // Update preview
+        clearContainer(logoPreview);
+        const previewImg = createElement('img', {
+          src: dataUrl,
+          style: 'max-width: 100%; max-height: 60px;'
+        });
+        logoPreview.appendChild(previewImg);
+
+        // Store temporarily (will be saved on form submit)
+        logoFileInput.dataset.logoData = dataUrl;
+        removeLogoButton.style.display = '';
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+
+    removeLogoButton.addEventListener('click', () => {
+      clearContainer(logoPreview);
+      logoPreview.appendChild(createElement('span', { style: 'color: #9ca3af;' }, 'Aucun logo personnalisé'));
+      logoFileInput.dataset.logoData = null;
+      logoFileInput.value = '';
+      removeLogoButton.style.display = 'none';
+    });
+
+    logoButtonGroup.appendChild(uploadLogoButton);
+    logoButtonGroup.appendChild(removeLogoButton);
+    logoField.appendChild(logoButtonGroup);
+
+    const logoHelp = createElement('p', { style: 'font-size: 12px; color: #9ca3af; margin-top: 5px;' },
+      t('settings.preferences.logo.max', 'Taille maximale : 1 MB')
+    );
+    logoField.appendChild(logoHelp);
+
+    preferencesForm.appendChild(logoField);
+
+    // Save preferences button
+    const preferencesButtonGroup = createElement('div', { style: 'margin-top: 16px;' });
+    const savePrefButton = createElement('button', { type: 'submit' }, t('common.save', 'Enregistrer'));
+    preferencesButtonGroup.appendChild(savePrefButton);
+    preferencesForm.appendChild(preferencesButtonGroup);
+
+    // Result area
+    const preferencesResultArea = createElement('div', { className: 'mt-2', id: 'preferences-result' });
+    preferencesForm.appendChild(preferencesResultArea);
+
+    // Save preferences handler
+    preferencesForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearContainer(preferencesResultArea);
+      savePrefButton.disabled = true;
+      savePrefButton.textContent = 'Enregistrement...';
+
+      const newPreferences = {
+        language: langSelect.value,
+        theme: themeSelect.value,
+        customLogo: logoFileInput.dataset.logoData === 'null' ? null : (logoFileInput.dataset.logoData || preferences.customLogo),
+      };
+
+      const result = await api.updatePreferences(newPreferences);
+
+      clearContainer(preferencesResultArea);
+      if (result.success) {
+        preferencesResultArea.appendChild(showMessage(
+          'Préférences',
+          0,
+          'Préférences sauvegardées ! Application en cours...'
+        ));
+
+        // Apply changes immediately
+        setLanguage(newPreferences.language);
+        applyTheme(newPreferences.theme);
+        applyCustomLogo(newPreferences.customLogo);
+
+        // Reload page to apply language changes to all UI
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        preferencesResultArea.appendChild(showMessage(
+          'Préférences',
+          1,
+          result.error || 'Erreur lors de la sauvegarde'
+        ));
+      }
+
+      savePrefButton.disabled = false;
+      savePrefButton.textContent = t('common.save', 'Enregistrer');
+    });
+
+    preferencesCard.appendChild(preferencesForm);
+    gridContainer.appendChild(preferencesCard);
+
+    container.appendChild(gridContainer);
   }
 
   /**
@@ -1434,25 +1748,563 @@ class App {
   }
 
   async renderPolicy(container) {
-    const card = createElement('section', { className: 'card' });
-    card.appendChild(createElement('h2', {}, 'Policy'));
-    card.appendChild(createElement('p', { className: 'hint' }, 'Section en développement...'));
-    container.appendChild(card);
+    // Editor card (left side)
+    const editorCard = createElement('section', { className: 'card' });
+    editorCard.appendChild(createElement('h2', {}, 'Policy / ACL'));
+
+    // Info message
+    const infoMsg = createElement('p', { className: 'hint' },
+      'Éditeur de policy HuJSON. La policy est remplacée entièrement à chaque sauvegarde. ' +
+      'Assurez-vous que Headscale est configuré avec policy.mode = "database".'
+    );
+    editorCard.appendChild(infoMsg);
+
+    // Help section (collapsible)
+    const helpSection = createElement('details', { style: 'margin: 12px 0; padding: 10px; background: rgba(37, 99, 235, 0.1); border-radius: 8px; border: 1px solid rgba(37, 99, 235, 0.3);' });
+    const helpSummary = createElement('summary', { style: 'cursor: pointer; font-weight: 500; color: #60a5fa;' }, '📖 Aide et exemples de syntaxe');
+    helpSection.appendChild(helpSummary);
+
+    const helpContent = createElement('div', { style: 'margin-top: 10px; font-size: 12px; line-height: 1.6;' });
+    helpContent.innerHTML = `
+      <p><strong>Structure de base d'une policy :</strong></p>
+      <pre style="background: rgba(15, 23, 42, 0.9); padding: 8px; border-radius: 4px; overflow-x: auto; font-size: 11px;">{
+  "groups": {
+    "group:admins": ["user1@example.com"],
+    "group:devs": ["dev1@example.com", "dev2@example.com"]
+  },
+  "acls": [
+    {
+      "action": "accept",
+      "src": ["group:admins"],
+      "dst": ["*:*"]
+    },
+    {
+      "action": "accept",
+      "src": ["group:devs"],
+      "dst": ["group:devs:*"]
+    }
+  ]
+}</pre>
+      <p><strong>Tags (pour grouper les machines) :</strong></p>
+      <ul style="margin: 5px 0; padding-left: 20px;">
+        <li><code>tag:server</code> - Machines serveurs</li>
+        <li><code>tag:laptop</code> - Ordinateurs portables</li>
+        <li><code>tag:iot</code> - Objets connectés</li>
+        <li><code>tag:dev</code>, <code>tag:prod</code> - Environnements</li>
+      </ul>
+      <p style="margin: 8px 0; padding: 8px; background: rgba(59, 130, 246, 0.1); border-radius: 4px; font-size: 13px;">
+        💡 <strong>Important :</strong> Les tags sont assignés aux machines (via l'onglet Nodes), puis utilisés dans les ACLs.
+        Les <strong>groups</strong> contiennent des utilisateurs, les <strong>tags</strong> identifient des machines.
+      </p>
+      <p><strong>AutoGroups disponibles :</strong></p>
+      <ul style="margin: 5px 0; padding-left: 20px;">
+        <li><code>autogroup:self</code> - Accès à ses propres machines</li>
+        <li><code>autogroup:member</code> - Tous les membres du réseau</li>
+        <li><code>autogroup:internet</code> - Contrôle des exit nodes</li>
+      </ul>
+      <p><strong>Ports et protocoles :</strong></p>
+      <ul style="margin: 5px 0; padding-left: 20px;">
+        <li><code>*:*</code> - Tous les ports et protocoles</li>
+        <li><code>*:80</code> - Port 80 (HTTP)</li>
+        <li><code>*:443</code> - Port 443 (HTTPS)</li>
+        <li><code>*:22</code> - Port 22 (SSH)</li>
+      </ul>
+    `;
+    helpSection.appendChild(helpContent);
+    editorCard.appendChild(helpSection);
+
+    // Buttons container
+    const buttonsContainer = createElement('div', { style: 'display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap;' });
+
+    const loadButton = createElement('button', {}, 'Charger la policy actuelle');
+    const saveButton = createElement('button', {}, 'Sauvegarder');
+    const resetButton = createElement('button', {}, 'Réinitialiser');
+    const exampleButton = createElement('button', { style: 'background: linear-gradient(135deg, #059669, #047857);' }, 'Charger un exemple');
+
+    buttonsContainer.appendChild(loadButton);
+    buttonsContainer.appendChild(saveButton);
+    buttonsContainer.appendChild(resetButton);
+    buttonsContainer.appendChild(exampleButton);
+    editorCard.appendChild(buttonsContainer);
+
+    // Textarea for policy editing
+    const policyTextarea = createElement('textarea', {
+      className: 'policy-text',
+      placeholder: 'Chargez la policy pour commencer l\'édition...',
+      spellcheck: 'false'
+    });
+    editorCard.appendChild(policyTextarea);
+
+    // Validation message
+    const validationMsg = createElement('p', { className: 'hint', style: 'margin-top: 8px;' }, '');
+    editorCard.appendChild(validationMsg);
+
+    container.appendChild(editorCard);
+
+    // Debug card (right side)
+    const debugCard = createDebugCard('Policy', '', { loading: false });
+    debugCard.id = 'policy-debug';
+    container.appendChild(debugCard);
+
+    // Store original policy for reset
+    let originalPolicy = '';
+
+    // Load policy function
+    const loadPolicy = async () => {
+      loadButton.disabled = true;
+      loadButton.textContent = 'Chargement...';
+      validationMsg.textContent = '';
+      validationMsg.className = 'hint';
+
+      const result = await api.getPolicy();
+
+      // Update debug card
+      const debugCardElement = document.getElementById('policy-debug');
+      if (debugCardElement && debugCardElement.parentNode) {
+        const newDebugCard = createDebugCard('Charger la policy', 'GET /api/policy', result);
+        newDebugCard.id = 'policy-debug';
+        debugCardElement.parentNode.replaceChild(newDebugCard, debugCardElement);
+      }
+
+      if (result.success && result.data) {
+        // Extract policy string from response
+        const policyData = result.data.policy || result.data;
+
+        // Parse and reformat the JSON for better readability
+        let policyString;
+        try {
+          const policyObj = typeof policyData === 'string' ? JSON.parse(policyData) : policyData;
+          policyString = JSON.stringify(policyObj, null, 2);
+        } catch (e) {
+          policyString = typeof policyData === 'string' ? policyData : JSON.stringify(policyData, null, 2);
+        }
+
+        policyTextarea.value = policyString;
+        originalPolicy = policyString;
+        validationMsg.textContent = 'Policy chargée avec succès';
+        validationMsg.className = 'hint status-ok';
+      } else {
+        validationMsg.textContent = `Erreur: ${result.error || 'Impossible de charger la policy'}`;
+        validationMsg.className = 'hint status-error';
+      }
+
+      loadButton.disabled = false;
+      loadButton.textContent = 'Charger la policy actuelle';
+    };
+
+    // Save policy function
+    const savePolicy = async () => {
+      const policyContent = policyTextarea.value.trim();
+
+      if (!policyContent) {
+        await showAlert('Erreur', 'La policy ne peut pas être vide');
+        return;
+      }
+
+      // Validate JSON
+      try {
+        JSON.parse(policyContent);
+      } catch (e) {
+        validationMsg.textContent = `JSON invalide: ${e.message}`;
+        validationMsg.className = 'hint status-error';
+        return;
+      }
+
+      const confirmed = await showConfirm(
+        'Confirmation',
+        'Êtes-vous sûr de vouloir remplacer la policy actuelle ? Cette action est irréversible.'
+      );
+
+      if (!confirmed) return;
+
+      saveButton.disabled = true;
+      saveButton.textContent = 'Sauvegarde...';
+      validationMsg.textContent = '';
+
+      const result = await api.setPolicy(policyContent);
+
+      // Update debug card
+      const debugCardElement = document.getElementById('policy-debug');
+      if (debugCardElement && debugCardElement.parentNode) {
+        const newDebugCard = createDebugCard('Sauvegarder la policy', 'PUT /api/policy', result);
+        newDebugCard.id = 'policy-debug';
+        debugCardElement.parentNode.replaceChild(newDebugCard, debugCardElement);
+      }
+
+      if (result.success) {
+        originalPolicy = policyContent;
+        validationMsg.textContent = 'Policy sauvegardée avec succès';
+        validationMsg.className = 'hint status-ok';
+        await showAlert('Succès', 'Policy mise à jour avec succès');
+      } else {
+        validationMsg.textContent = `Erreur: ${result.error || 'Échec de la sauvegarde'}`;
+        validationMsg.className = 'hint status-error';
+        await showAlert('Erreur', result.error || 'Impossible de sauvegarder la policy');
+      }
+
+      saveButton.disabled = false;
+      saveButton.textContent = 'Sauvegarder';
+    };
+
+    // Reset function
+    const resetPolicy = () => {
+      if (originalPolicy) {
+        policyTextarea.value = originalPolicy;
+        validationMsg.textContent = 'Policy réinitialisée';
+        validationMsg.className = 'hint status-warning';
+      }
+    };
+
+    // Load example policy
+    const loadExample = async () => {
+      const examplePolicy = {
+        "groups": {
+          "group:admins": ["admin@example.com"]
+        },
+        "tagOwners": {
+          "tag:server": ["group:admins"],
+          "tag:laptop": ["group:admins"],
+          "tag:iot": ["group:admins"],
+          "tag:dev": ["group:admins"],
+          "tag:prod": ["group:admins"]
+        },
+        "acls": [
+          {
+            "action": "accept",
+            "src": ["group:admins"],
+            "dst": ["*:*"],
+            "comment": "Les admins ont accès à tout"
+          },
+          {
+            "action": "accept",
+            "src": ["tag:laptop"],
+            "dst": ["tag:server:*"],
+            "comment": "Les laptops peuvent accéder aux serveurs"
+          },
+          {
+            "action": "accept",
+            "src": ["tag:server"],
+            "dst": ["tag:iot:22,80,443"],
+            "comment": "Les serveurs peuvent gérer les IoT (SSH, HTTP, HTTPS)"
+          },
+          {
+            "action": "accept",
+            "src": ["tag:prod"],
+            "dst": ["tag:prod:*"],
+            "comment": "Isolation de l'environnement de production"
+          },
+          {
+            "action": "accept",
+            "src": ["autogroup:self"],
+            "dst": ["autogroup:self:*"],
+            "comment": "Accès à ses propres machines"
+          }
+        ],
+        "ssh": [
+          {
+            "action": "accept",
+            "src": ["group:admins"],
+            "dst": ["tag:server"],
+            "users": ["root", "autogroup:nonroot"]
+          }
+        ]
+      };
+
+      const confirmed = await showConfirm(
+        'Charger un exemple',
+        'Voulez-vous charger un exemple de policy ? Cela remplacera le contenu actuel de l\'éditeur (non sauvegardé).'
+      );
+
+      if (confirmed) {
+        policyTextarea.value = JSON.stringify(examplePolicy, null, 2);
+        validationMsg.textContent = 'Exemple chargé. N\'oubliez pas d\'adapter les emails et groupes à votre configuration.';
+        validationMsg.className = 'hint status-warning';
+      }
+    };
+
+    // Event listeners
+    loadButton.addEventListener('click', loadPolicy);
+    saveButton.addEventListener('click', savePolicy);
+    resetButton.addEventListener('click', resetPolicy);
+    exampleButton.addEventListener('click', loadExample);
+
+    // Auto-load policy on mount
+    await loadPolicy();
   }
 
   async renderInfo(container) {
-    const card = createElement('section', { className: 'card' });
-    card.appendChild(createElement('h2', {}, 'Informations'));
+    // Main container with grid layout
+    const gridContainer = createElement('div', { style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 16px;' });
 
-    const result = await api.getHealth();
-    if (result.success && result.data) {
-      const pre = createElement('pre', { className: 'log-block' }, JSON.stringify(result.data, null, 2));
-      card.appendChild(pre);
+    // === HEALTH STATUS CARD ===
+    const healthCard = createElement('section', { className: 'card' });
+    healthCard.appendChild(createElement('h2', {}, 'État du système'));
+
+    const healthResult = await api.getHealth();
+    // Health endpoint returns data directly without success wrapper
+    const health = healthResult.data || healthResult;
+    if (health && health.status) {
+
+      // Status indicator
+      const statusDiv = createElement('div', { style: 'margin: 12px 0; padding: 12px; border-radius: 6px; background: linear-gradient(135deg, ' + (health.status === 'healthy' ? '#10b981, #047857' : '#ef4444, #dc2626') + '); color: white;' });
+      const statusText = createElement('p', { style: 'margin: 0; font-weight: bold; font-size: 1.1em;' },
+        (health.status === 'healthy' ? '✅ ' : '❌ ') + 'Statut: ' + (health.status === 'healthy' ? 'Opérationnel' : 'Hors ligne')
+      );
+      statusDiv.appendChild(statusText);
+      healthCard.appendChild(statusDiv);
+
+      // Details
+      const details = createElement('div', { style: 'margin-top: 12px;' });
+
+      const items = [
+        { label: 'Dashboard Version', value: health.version || 'N/A' },
+        { label: 'Headscale URL', value: health.headscale?.url || 'N/A' },
+        { label: 'Connexion Headscale', value: health.headscale?.connected ? '✅ Connecté' : '❌ Déconnecté' },
+        { label: 'Dernière vérification', value: new Date(health.timestamp).toLocaleString('fr-FR') }
+      ];
+
+      items.forEach(item => {
+        const row = createElement('div', { style: 'display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #374151;' });
+        row.appendChild(createElement('span', { style: 'color: #9ca3af;' }, item.label + ':'));
+        row.appendChild(createElement('span', { style: 'font-weight: 500;' }, item.value));
+        details.appendChild(row);
+      });
+
+      healthCard.appendChild(details);
     } else {
-      card.appendChild(createElement('p', { className: 'status-error' }, 'Impossible de récupérer les informations'));
+      healthCard.appendChild(createElement('p', { className: 'status-error' }, '❌ Impossible de récupérer l\'état du système'));
     }
 
-    container.appendChild(card);
+    gridContainer.appendChild(healthCard);
+
+    // === HEADSCALE VERSION CARD ===
+    const versionCard = createElement('section', { className: 'card' });
+    versionCard.appendChild(createElement('h2', {}, 'Version Headscale'));
+
+    // Get Headscale version via nodes endpoint (which is always available)
+    const nodesResult = await api.getNodes();
+    if (nodesResult.success) {
+      const versionInfo = createElement('div', { style: 'margin-top: 12px;' });
+
+      versionInfo.appendChild(createElement('p', {},
+        '🔧 Pour obtenir la version de Headscale, exécutez sur le serveur:'
+      ));
+
+      const cmdBlock = createElement('pre', {
+        className: 'log-block',
+        style: 'background: #1f2937; padding: 12px; border-radius: 6px; overflow-x: auto; margin: 12px 0;'
+      }, 'docker exec headscale headscale version');
+      versionInfo.appendChild(cmdBlock);
+
+      const expectedOutput = createElement('p', { style: 'color: #9ca3af; font-size: 0.9em; margin-top: 8px;' },
+        'Version actuelle attendue: v0.27.1 ou supérieure'
+      );
+      versionInfo.appendChild(expectedOutput);
+
+      // Bug warning
+      const warningBox = createElement('div', {
+        style: 'margin-top: 16px; padding: 12px; background: #7c2d12; border-left: 4px solid #ea580c; border-radius: 6px;'
+      });
+      warningBox.appendChild(createElement('p', { style: 'margin: 0 0 8px 0; font-weight: bold;' }, '⚠️ Bug connu v0.27.x'));
+      warningBox.appendChild(createElement('p', { style: 'margin: 0; font-size: 0.9em;' },
+        'La suppression des tags n\'est pas persistante. Utilisez le script shell fourni pour gérer les tags.'
+      ));
+      versionInfo.appendChild(warningBox);
+
+      versionCard.appendChild(versionInfo);
+    } else {
+      versionCard.appendChild(createElement('p', { className: 'status-error' }, '❌ Impossible de récupérer les informations'));
+    }
+
+    gridContainer.appendChild(versionCard);
+
+    // === STATISTICS CARD ===
+    const statsCard = createElement('section', { className: 'card' });
+    statsCard.appendChild(createElement('h2', {}, 'Statistiques'));
+
+    const statsDiv = createElement('div', { style: 'margin-top: 12px;' });
+
+    // Get all data in parallel
+    const [nodesRes, usersRes, routesRes, keysRes] = await Promise.all([
+      api.getNodes(),
+      api.getUsers(),
+      api.getRoutes(),
+      api.getPreauthKeys('')
+    ]);
+
+    const stats = [
+      {
+        label: 'Noeuds',
+        value: nodesRes.success ? (Array.isArray(nodesRes.data) ? nodesRes.data.length : 0) : 'N/A',
+        icon: '🖥️'
+      },
+      {
+        label: 'Noeuds en ligne',
+        value: nodesRes.success && Array.isArray(nodesRes.data)
+          ? nodesRes.data.filter(n => n.connected?.toLowerCase() === 'oui' || n.connected?.toLowerCase() === 'yes').length
+          : 'N/A',
+        icon: '🟢'
+      },
+      {
+        label: 'Utilisateurs',
+        value: usersRes.success ? (Array.isArray(usersRes.data) ? usersRes.data.length : 0) : 'N/A',
+        icon: '👤'
+      },
+      {
+        label: 'Routes approuvées',
+        value: routesRes.success && Array.isArray(routesRes.data)
+          ? routesRes.data.filter(r => r.approved && r.approved !== '-').length
+          : 'N/A',
+        icon: '🛣️'
+      }
+    ];
+
+    stats.forEach(stat => {
+      const statBox = createElement('div', {
+        style: 'background: linear-gradient(135deg, #374151, #1f2937); padding: 16px; border-radius: 8px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;'
+      });
+
+      const leftDiv = createElement('div', {});
+      leftDiv.appendChild(createElement('div', { style: 'font-size: 2em; margin-bottom: 4px;' }, stat.icon));
+      leftDiv.appendChild(createElement('div', { style: 'color: #9ca3af; font-size: 0.9em;' }, stat.label));
+
+      const rightDiv = createElement('div', { style: 'font-size: 2.5em; font-weight: bold; color: #10b981;' }, String(stat.value));
+
+      statBox.appendChild(leftDiv);
+      statBox.appendChild(rightDiv);
+      statsDiv.appendChild(statBox);
+    });
+
+    statsCard.appendChild(statsDiv);
+    gridContainer.appendChild(statsCard);
+
+    // === QUICK ACTIONS CARD ===
+    const actionsCard = createElement('section', { className: 'card' });
+    actionsCard.appendChild(createElement('h2', {}, 'Actions rapides'));
+
+    const actionsDiv = createElement('div', { style: 'margin-top: 12px;' });
+
+    const actions = [
+      {
+        title: '📋 Gérer les policies',
+        description: 'Utilisez le script shell sur le serveur',
+        command: './update-headscale-policy.sh verify'
+      },
+      {
+        title: '🏷️ Supprimer des tags',
+        description: 'Suppression permanente (workaround bug)',
+        command: './remove-headscale-tags.sh <node_id>'
+      },
+      {
+        title: '🔄 Redémarrer Headscale',
+        description: 'Redémarre le service Headscale',
+        command: 'cd /root/projet/headscale && docker compose restart headscale'
+      },
+      {
+        title: '📊 Voir les logs',
+        description: 'Affiche les logs en temps réel',
+        command: 'docker logs headscale -f'
+      }
+    ];
+
+    actions.forEach(action => {
+      const actionBox = createElement('div', {
+        style: 'background: #1f2937; padding: 12px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid #3b82f6;'
+      });
+
+      actionBox.appendChild(createElement('h3', { style: 'margin: 0 0 8px 0; font-size: 1em;' }, action.title));
+      actionBox.appendChild(createElement('p', { style: 'margin: 0 0 8px 0; color: #9ca3af; font-size: 0.9em;' }, action.description));
+
+      const cmdBlock = createElement('code', {
+        style: 'display: block; background: #111827; padding: 8px; border-radius: 4px; font-size: 0.85em; overflow-x: auto;'
+      }, action.command);
+      actionBox.appendChild(cmdBlock);
+
+      actionsDiv.appendChild(actionBox);
+    });
+
+    actionsCard.appendChild(actionsDiv);
+    gridContainer.appendChild(actionsCard);
+
+    // === DOCUMENTATION CARD ===
+    const docsCard = createElement('section', { className: 'card' });
+    docsCard.appendChild(createElement('h2', {}, 'Documentation'));
+
+    const docsDiv = createElement('div', { style: 'margin-top: 12px;' });
+
+    const docs = [
+      {
+        title: '📘 POLICY_MANAGEMENT.md',
+        description: 'Guide complet pour gérer les policies ACL',
+        path: 'Voir le fichier dans le projet'
+      },
+      {
+        title: '📕 HEADSCALE_TAGS_BUG.md',
+        description: 'Documentation du bug tags v0.27 et solutions',
+        path: 'Voir le fichier dans le projet'
+      },
+      {
+        title: '📗 UPDATE_POLICY_README.md',
+        description: 'Documentation du script de mise à jour des policies',
+        path: '/root/UPDATE_POLICY_README.md (sur le serveur)'
+      },
+      {
+        title: '🌐 Documentation Headscale',
+        description: 'Documentation officielle de Headscale',
+        link: 'https://headscale.net/'
+      }
+    ];
+
+    docs.forEach(doc => {
+      const docBox = createElement('div', {
+        style: 'padding: 12px; border-bottom: 1px solid #374151;'
+      });
+
+      docBox.appendChild(createElement('h3', { style: 'margin: 0 0 4px 0; font-size: 0.95em;' }, doc.title));
+      docBox.appendChild(createElement('p', { style: 'margin: 0; color: #9ca3af; font-size: 0.85em;' }, doc.description));
+
+      if (doc.link) {
+        const link = createElement('a', {
+          href: doc.link,
+          target: '_blank',
+          style: 'color: #3b82f6; font-size: 0.85em; text-decoration: underline;'
+        }, doc.link);
+        docBox.appendChild(link);
+      } else {
+        docBox.appendChild(createElement('p', { style: 'margin: 4px 0 0 0; color: #6b7280; font-size: 0.8em; font-style: italic;' }, doc.path));
+      }
+
+      docsDiv.appendChild(docBox);
+    });
+
+    docsCard.appendChild(docsDiv);
+    gridContainer.appendChild(docsCard);
+
+    // === SYSTEM INFO CARD ===
+    const sysCard = createElement('section', { className: 'card' });
+    sysCard.appendChild(createElement('h2', {}, 'Informations système'));
+
+    const sysDiv = createElement('div', { style: 'margin-top: 12px;' });
+
+    const sysInfo = [
+      { label: 'Provider', value: 'REST API v1' },
+      { label: 'Mode policy', value: 'Database' },
+      { label: 'Docker', value: 'Container headscale-ui' },
+      { label: 'Serveur Headscale', value: '192.168.1.25:3280' }
+    ];
+
+    sysInfo.forEach(info => {
+      const row = createElement('div', { style: 'display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #374151;' });
+      row.appendChild(createElement('span', { style: 'color: #9ca3af;' }, info.label + ':'));
+      row.appendChild(createElement('span', { style: 'font-weight: 500;' }, info.value));
+      sysDiv.appendChild(row);
+    });
+
+    sysCard.appendChild(sysDiv);
+    gridContainer.appendChild(sysCard);
+
+    // Add grid to container
+    container.appendChild(gridContainer);
   }
 }
 

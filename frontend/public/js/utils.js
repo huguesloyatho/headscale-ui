@@ -141,7 +141,20 @@ export function createTable(headers, rows, section) {
     const tr = createElement('tr');
     headers.forEach(header => {
       const value = rowData[header] || '';
-      const td = createElement('td', { 'data-col': header }, String(value));
+      const td = createElement('td', { 'data-col': header });
+
+      // Special formatting for connected status
+      if (header === 'connected') {
+        const isConnected = value.toLowerCase() === 'oui' || value.toLowerCase() === 'yes';
+        const indicator = createElement('span', {
+          style: `display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: ${isConnected ? '#10b981' : '#ef4444'}; margin-right: 6px;`
+        });
+        td.appendChild(indicator);
+        td.appendChild(document.createTextNode(String(value)));
+      } else {
+        td.textContent = String(value);
+      }
+
       tr.appendChild(td);
     });
     tbody.appendChild(tr);
