@@ -138,9 +138,10 @@ class ApiClient {
     return await this.request('/routes');
   }
 
-  async enableRoute(routeId) {
-    return await this.request(`/routes/${routeId}/enable`, {
+  async enableRoute(nodeId, routes) {
+    return await this.request(`/routes/${nodeId}/enable`, {
       method: 'POST',
+      body: JSON.stringify({ routes }),
     });
   }
 

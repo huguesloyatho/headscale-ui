@@ -128,18 +128,25 @@ class ApiProvider {
   // ==================== ROUTES ====================
 
   async listRoutes() {
-    logger.debug('Fetching routes via API');
-    return await this.client.get('/api/v1/routes');
+    logger.debug('Fetching routes via API (from nodes)');
+    // Routes are part of nodes, so we fetch nodes and extract route info
+    return await this.client.get('/api/v1/node');
   }
 
-  async enableRoute(routeId) {
-    logger.info('Enabling route via API', { routeId });
-    return await this.client.post(`/api/v1/routes/${routeId}/enable`);
+  async enableRoute(nodeId, routes) {
+    logger.info('Enabling routes via API', { nodeId, routes });
+    // In Headscale API v1, routes are managed via node endpoints
+    return await this.client.post(`/api/v1/node/${nodeId}/approve_routes`, {
+      routes: routes || []
+    });
   }
 
-  async disableRoute(routeId) {
-    logger.info('Disabling route via API', { routeId });
-    return await this.client.post(`/api/v1/routes/${routeId}/disable`);
+  async disableRoute(nodeId) {
+    logger.info('Disabling routes via API', { nodeId });
+    // Disable by sending empty routes array
+    return await this.client.post(`/api/v1/node/${nodeId}/approve_routes`, {
+      routes: []
+    });
   }
 
   // ==================== POLICY ====================

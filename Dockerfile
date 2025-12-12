@@ -1,27 +1,5 @@
 # ======================
-# Stage 1: Build Frontend
-# ======================
-FROM node:20-alpine AS frontend-build
-
-WORKDIR /app/frontend
-
-# Copy frontend package files
-COPY frontend/package*.json ./
-
-# Install ALL dependencies (including dev) for build
-RUN npm install
-
-# Copy frontend source
-COPY frontend/ ./
-
-# Build frontend (if using a build step, e.g., React/Vue)
-# For now, we'll just prepare static files
-RUN if [ -f "package.json" ] && grep -q '"build"' package.json; then \
-      npm run build; \
-    fi
-
-# ======================
-# Stage 2: Backend Dependencies
+# Stage 1: Backend Dependencies
 # ======================
 FROM node:20-alpine AS backend-deps
 
@@ -34,7 +12,7 @@ COPY backend/package*.json ./
 RUN npm install --omit=dev
 
 # ======================
-# Stage 3: Production Image
+# Stage 2: Production Image
 # ======================
 FROM node:20-alpine
 

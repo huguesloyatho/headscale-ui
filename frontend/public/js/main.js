@@ -1284,10 +1284,153 @@ class App {
   }
 
   async renderRoutes(container) {
+    // Forms card
+    const formsCard = this.createRouteForms();
+    container.appendChild(formsCard);
+
+    // Debug card
+    const debugCard = createDebugCard('Liste des routes', 'GET /api/routes', { loading: true });
+    debugCard.id = 'routes-debug';
+    container.appendChild(debugCard);
+
+    // Data card
+    const dataCard = createElement('section', { className: 'card card-fullwidth' });
+    const h3 = createElement('h3', {}, 'Routes');
+    dataCard.appendChild(h3);
+
+    // Show loading
+    const loader = createLoader();
+    dataCard.appendChild(loader);
+
+    container.appendChild(dataCard);
+
+    // Fetch data
+    const result = await api.getRoutes();
+
+    // Remove loader
+    loader.remove();
+
+    // Update debug card with result
+    if (debugCard && debugCard.parentNode) {
+      const newDebugCard = createDebugCard('Liste des routes', 'GET /api/routes', result);
+      newDebugCard.id = 'routes-debug';
+      debugCard.parentNode.replaceChild(newDebugCard, debugCard);
+    }
+
+    if (!result.success) {
+      dataCard.appendChild(showMessage('Erreur', 1, result.error));
+      return;
+    }
+
+    const routes = Array.isArray(result.data) ? result.data : [];
+    if (routes.length === 0) {
+      dataCard.appendChild(createElement('p', { className: 'hint' }, 'Aucune route trouvée'));
+      return;
+    }
+
+    // Extract headers from first route object
+    const headers = routes.length > 0 ? Object.keys(routes[0]) : [];
+    const table = createTable(headers, routes, 'routes');
+    dataCard.appendChild(table);
+  }
+
+  /**
+   * Create Route forms
+   */
+  createRouteForms() {
     const card = createElement('section', { className: 'card' });
-    card.appendChild(createElement('h2', {}, 'Routes'));
-    card.appendChild(createElement('p', { className: 'hint' }, 'Section en développement...'));
-    container.appendChild(card);
+    const h2 = createElement('h2', {}, 'Routes / Subnet router');
+    card.appendChild(h2);
+
+    const hint1 = createElement('p', { className: 'hint' }, '1) Sur le noeud routeur : sudo tailscale set --advertise-routes=192.168.1.0/24,10.0.0.0/8 (ou via tailscale up --advertise-routes=...)');
+    const hint2 = createElement('p', { className: 'hint' }, '2) ICI, tu approuves les routes via nodes approve-routes --identifier <node> --routes \'\'');
+    card.appendChild(hint1);
+    card.appendChild(hint2);
+
+    // Approve routes form
+    const approveForm = createElement('form', { className: 'form-block' });
+    const approveTitle = createElement('h3', {}, 'Approuver les routes');
+    approveForm.appendChild(approveTitle);
+
+    // Node ID field (column 14 in the table)
+    const nodeIdField = createElement('div', { className: 'form-field' });
+    const nodeIdLabel = createElement('label', {}, 'ID du noeud (colonne 14 dans le tableau des routes)');
+    const nodeIdInput = createElement('input', {
+      type: 'number',
+      name: 'nodeId',
+      required: true,
+      placeholder: '1',
+      min: '1',
+    });
+    nodeIdField.appendChild(nodeIdLabel);
+    nodeIdField.appendChild(nodeIdInput);
+    approveForm.appendChild(nodeIdField);
+
+    // Routes field
+    const routesField = createElement('div', { className: 'form-field' });
+    const routesLabel = createElement('label', {}, 'Routes à approuver (liste séparée par des virgules, ex : 192.168.1.0/24,10.0.0.0/8)');
+    const routesInput = createElement('input', {
+      type: 'text',
+      name: 'routes',
+      required: true,
+      placeholder: '192.168.1.0/24,10.0.0.0/8',
+    });
+    const routesHint = createElement('p', { className: 'hint', style: 'margin-top: 4px; font-size: 12px;' }, 'Astuce : mettre "" pour supprimer l\'annonce de routes');
+    routesField.appendChild(routesLabel);
+    routesField.appendChild(routesInput);
+    routesField.appendChild(routesHint);
+    approveForm.appendChild(routesField);
+
+    const approveButton = createElement('button', { type: 'submit' }, 'Approuver les routes');
+    approveForm.appendChild(approveButton);
+
+    approveForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      approveButton.disabled = true;
+      approveButton.textContent = 'Approbation...';
+
+      const nodeId = nodeIdInput.value.trim();
+      const routes = routesInput.value.trim();
+
+      const confirmed = await showConfirm(
+        'Confirmation',
+        routes === '""' || routes === "''" || routes === ''
+          ? `Êtes-vous sûr de vouloir SUPPRIMER les routes du noeud ${nodeId} ?`
+          : `Êtes-vous sûr de vouloir approuver les routes "${routes}" pour le noeud ${nodeId} ?`
+      );
+
+      if (!confirmed) {
+        approveButton.disabled = false;
+        approveButton.textContent = 'Approuver les routes';
+        return;
+      }
+
+      const result = await api.enableRoute(nodeId, routes);
+
+      // Update debug card with result
+      const debugCard = document.getElementById('routes-debug');
+      if (debugCard && debugCard.parentNode) {
+        const newDebugCard = createDebugCard('Approuver une route', `POST /api/routes/${nodeId}/enable`, result);
+        newDebugCard.id = 'routes-debug';
+        debugCard.parentNode.replaceChild(newDebugCard, debugCard);
+      }
+
+      if (result.success) {
+        nodeIdInput.value = '';
+        routesInput.value = '';
+        await showAlert('Succès', 'Routes approuvées avec succès');
+        // Reload routes
+        await this.renderRoutes(document.querySelector('.content-wrapper'));
+      } else {
+        await showAlert('Erreur', result.error);
+      }
+
+      approveButton.disabled = false;
+      approveButton.textContent = 'Approuver les routes';
+    });
+
+    card.appendChild(approveForm);
+    return card;
   }
 
   async renderPolicy(container) {
