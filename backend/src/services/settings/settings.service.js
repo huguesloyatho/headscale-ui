@@ -15,7 +15,17 @@ class SettingsService {
    */
   async getSettings() {
     const storage = getStorage();
-    return await storage.getSettings();
+    const settings = await storage.getSettings();
+
+    // Add API key prefix (first 7 chars) to help identify the current key
+    if (settings.apiKey) {
+      settings.apiKeyPrefix = settings.apiKey.split('.')[0];
+    }
+
+    // Remove full API key for security
+    delete settings.apiKey;
+
+    return settings;
   }
 
   /**

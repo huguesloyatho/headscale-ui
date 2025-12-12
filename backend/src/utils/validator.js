@@ -38,10 +38,10 @@ function isValidCidr(cidr) {
 }
 
 /**
- * Validates duration format (e.g., 48h, 7d, 90d)
+ * Validates duration format (e.g., 48h, 7d, 90d, 1y, 6m)
  */
 function isValidDuration(duration) {
-  const durationRegex = /^\d+[smhd]$/;
+  const durationRegex = /^\d+[smhdmy]$/;
   return durationRegex.test(duration);
 }
 

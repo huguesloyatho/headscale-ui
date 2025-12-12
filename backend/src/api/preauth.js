@@ -35,7 +35,7 @@ router.get('/', async (req, res, next) => {
     }
 
     // Format preauth keys data
-    const keys = Array.isArray(result.data.preauthKeys) ? result.data.preauthKeys : [];
+    const keys = Array.isArray(result.data.preAuthKeys) ? result.data.preAuthKeys : [];
     const formatted = keys.map(key => ({
       id: key.id || '',
       user: extractUserName(key.user),

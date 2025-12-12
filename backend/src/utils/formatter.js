@@ -31,6 +31,45 @@ function formatTimestamp(value) {
 }
 
 /**
+ * Converts duration string (e.g., "48h", "7d", "90d") to ISO 8601 timestamp
+ */
+function durationToTimestamp(duration) {
+  if (!duration) return null;
+
+  const match = duration.match(/^(\d+)([hdmy])$/);
+  if (!match) {
+    throw new Error('Invalid duration format. Use format like: 48h, 7d, 90d, 1y');
+  }
+
+  const value = parseInt(match[1]);
+  const unit = match[2];
+
+  const now = new Date();
+  let expiration;
+
+  switch (unit) {
+    case 'h':
+      expiration = new Date(now.getTime() + value * 60 * 60 * 1000);
+      break;
+    case 'd':
+      expiration = new Date(now.getTime() + value * 24 * 60 * 60 * 1000);
+      break;
+    case 'm':
+      expiration = new Date(now);
+      expiration.setMonth(expiration.getMonth() + value);
+      break;
+    case 'y':
+      expiration = new Date(now);
+      expiration.setFullYear(expiration.getFullYear() + value);
+      break;
+    default:
+      throw new Error('Invalid duration unit');
+  }
+
+  return expiration.toISOString();
+}
+
+/**
  * Converts boolean or int to "yes"/"no" label
  */
 function boolLabel(value) {
@@ -78,6 +117,7 @@ function extractUserName(user) {
 
 module.exports = {
   formatTimestamp,
+  durationToTimestamp,
   boolLabel,
   maskApiKey,
   arrayToString,

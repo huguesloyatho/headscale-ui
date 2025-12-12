@@ -6,6 +6,7 @@
 
 const { getClient } = require('../client');
 const logger = require('../../../utils/logger');
+const { durationToTimestamp } = require('../../../utils/formatter');
 
 class ApiProvider {
   constructor() {
@@ -64,7 +65,23 @@ class ApiProvider {
 
   async createApiKey(expiration) {
     logger.info('Creating API key via API', { expiration });
-    const data = expiration ? { expiration } : {};
+
+    // Convert duration (e.g., "48h", "90d") to ISO 8601 timestamp
+    let data = {};
+    if (expiration) {
+      try {
+        const timestamp = durationToTimestamp(expiration);
+        data = { expiration: timestamp };
+        logger.debug('Converted duration to timestamp', { duration: expiration, timestamp });
+      } catch (error) {
+        return {
+          success: false,
+          error: error.message,
+          status: 400,
+        };
+      }
+    }
+
     return await this.client.post('/api/v1/apikey', data);
   }
 
@@ -87,9 +104,19 @@ class ApiProvider {
       reusable: options.reusable || false,
       ephemeral: options.ephemeral || false,
     };
+
+    // Convert duration to ISO timestamp if expiration is provided
     if (options.expiration) {
-      data.expiration = options.expiration;
+      try {
+        const { durationToTimestamp } = require('../../../utils/formatter');
+        const timestamp = durationToTimestamp(options.expiration);
+        data.expiration = timestamp;
+        logger.debug('Converted duration to timestamp', { duration: options.expiration, timestamp });
+      } catch (error) {
+        return { success: false, error: error.message, status: 400 };
+      }
     }
+
     return await this.client.post('/api/v1/preauthkey', data);
   }
 
